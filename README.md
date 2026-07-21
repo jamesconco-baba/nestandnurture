@@ -86,11 +86,16 @@ a proper auth provider (e.g. NextAuth/Auth.js).
 
 ### What the analytics track
 
-Middleware records a page view for every public page request (path + a rolling daily counter),
-skipping static assets and API routes. It's intentionally simple — no bot filtering, no per-user
-tracking, no cookies on visitors — enough to answer "what's getting looked at" without adding a
-full analytics vendor. Swap in Vercel Analytics, Plausible, or PostHog later if you want more depth
-(session replay, referrers, conversion funnels, etc.).
+A small client-side component (`components/VisitTracker.js`) pings `/api/track` on every page
+view across the public storefront (using `navigator.sendBeacon` where available). That API route
+runs on Node.js, not the Edge runtime, and is the only place the Redis client is used for
+analytics — `middleware.js` itself only does a cookie check for `/admin`, with no external
+packages, to keep the Edge bundle as small and dependency-free as possible.
+
+It's intentionally simple — no bot filtering, no per-user tracking, no cookies on visitors —
+enough to answer "what's getting looked at" without adding a full analytics vendor. Swap in Vercel
+Analytics, Plausible, or PostHog later if you want more depth (session replay, referrers,
+conversion funnels, etc.).
 
 ## 4. Push to GitHub
 
