@@ -15,6 +15,8 @@ gold `#C5A059`, charcoal `#2C2C2C`, cream `#FAF6EF`, Playfair Display headings).
 - **Cart** with persistence (localStorage) across all three purchase paths.
 - **Payment** via **Paystack** (Card, Bank Transfer, USSD) — inline popup on checkout, verified
   server-side via a Vercel serverless function so a browser can't fake a successful payment.
+- **Admin dashboard** (`/admin`) — password-protected visit analytics + full product CRUD, backed
+  by Redis (see section 3 below).
 
 ## 1. Run it locally
 
@@ -43,7 +45,54 @@ Visit `http://localhost:3000`.
 > Supabase/Postgres) or fire off an email/Slack notification once you're ready to go further than
 > "view it in Paystack."
 
-## 3. Push to GitHub
+## 3. Admin dashboard (`/admin`)
+
+A password-protected dashboard for the business owner, covering:
+
+- **Overview** (`/admin`) — total visits, visits over the last 7/14 days, and a "most visited
+  pages" ranking.
+- **Products** (`/admin/products`) — add, edit, or remove any item in the Unit Shop /
+  Build-a-Gift catalog. Changes appear on the live site immediately (no redeploy needed).
+
+### Storage — connect Redis (2 minutes)
+
+Both the analytics and the product editing need somewhere to persist data across requests
+(Vercel's serverless functions don't have a writable local disk). The standard option on Vercel
+today is a Redis database from the **Marketplace** (note: the old "Vercel KV" product was retired
+in December 2024 in favor of this):
+
+1. In your Vercel project → **Storage** tab → **Create Database** → **Upstash** → **Redis**.
+2. Follow the prompts to create a free-tier database and connect it to this project.
+3. Vercel automatically injects `KV_REST_API_URL` and `KV_REST_API_TOKEN` into your project's
+   environment variables — you don't need to copy/paste anything.
+4. Redeploy. That's it — `/admin/products` and the visit counters will start persisting.
+
+**Before you connect Redis:** the site still works — the shop shows the built-in catalog
+(read-only) and the admin overview shows a "not connected yet" notice instead of numbers. Nothing
+crashes; it just can't save changes yet.
+
+### Admin login
+
+Set these two environment variables (Vercel → Project → Settings → Environment Variables):
+
+- `ADMIN_PASSWORD` — whatever password the business owner will type in at `/admin/login`.
+- `ADMIN_SESSION_SECRET` — a separate long random string, e.g. generate one with
+  `openssl rand -hex 32`. This becomes the session cookie's value; it's never shown to anyone
+  and doesn't need to be memorable.
+
+This is intentionally a single shared password rather than individual accounts — appropriate for
+one business owner. If you later need multiple staff logins or roles, swap `lib/adminAuth.js` for
+a proper auth provider (e.g. NextAuth/Auth.js).
+
+### What the analytics track
+
+Middleware records a page view for every public page request (path + a rolling daily counter),
+skipping static assets and API routes. It's intentionally simple — no bot filtering, no per-user
+tracking, no cookies on visitors — enough to answer "what's getting looked at" without adding a
+full analytics vendor. Swap in Vercel Analytics, Plausible, or PostHog later if you want more depth
+(session replay, referrers, conversion funnels, etc.).
+
+## 4. Push to GitHub
 
 ```bash
 cd nest-and-nurture
@@ -55,19 +104,25 @@ git remote add origin https://github.com/<your-username>/<your-repo>.git
 git push -u origin main
 ```
 
-## 4. Deploy on Vercel
+## 5. Deploy on Vercel
 
 1. Go to [vercel.com/new](https://vercel.com/new) and import the GitHub repo.
 2. Framework preset: **Next.js** (auto-detected — no config needed).
-3. Add the same two environment variables from step 2 under **Project → Settings →
-   Environment Variables** (use your **Live** Paystack keys for production).
-4. Deploy. Every push to `main` will auto-redeploy.
+3. Under **Project → Settings → Environment Variables**, add:
+   - `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` / `PAYSTACK_SECRET_KEY` (use your **Live** keys)
+   - `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET`
+4. Deploy. Then connect Redis (step 3 above) so the admin dashboard can persist changes, and
+   redeploy once more.
+5. Every push to `main` will auto-redeploy after this.
 
 ## Notes on prices & catalog
 
-`lib/products.js` holds the full unit-price catalog from your item list, with placeholder NGN
-prices — edit any `price` value directly, nothing else depends on it. `lib/scoops.js` holds the
-three Mystery Scoop tiers and the greeting-card copy from the concept document.
+`lib/products.js` holds the **default/seed** unit-price catalog from your item list, with
+placeholder NGN prices. Once Redis is connected, `/admin/products` becomes the actual source of
+truth — edits there persist and override the defaults; `lib/products.js` is only used to seed the
+very first load and as a fallback if storage isn't connected. `lib/scoops.js` holds the three
+Mystery Scoop tiers and the greeting-card copy from the concept document (not yet editable from
+`/admin` — let me know if you'd like that added too).
 
 ## On the logo
 
