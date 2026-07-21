@@ -63,8 +63,11 @@ in December 2024 in favor of this):
 
 1. In your Vercel project → **Storage** tab → **Create Database** → **Upstash** → **Redis**.
 2. Follow the prompts to create a free-tier database and connect it to this project.
-3. Vercel automatically injects `KV_REST_API_URL` and `KV_REST_API_TOKEN` into your project's
-   environment variables — you don't need to copy/paste anything.
+3. Vercel automatically injects the right environment variables into your project once
+   connected — the exact names have varied across integration versions (you might see
+   `UPSTASH_KV_REST_API_URL`/`UPSTASH_KV_REST_API_TOKEN`, or `KV_REST_API_URL`/`KV_REST_API_TOKEN`,
+   or `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`). This app checks for all three, so you
+   don't need to rename anything — whatever Vercel gives you will work.
 4. Redeploy. That's it — `/admin/products` and the visit counters will start persisting.
 
 **Before you connect Redis:** the site still works — the shop shows the built-in catalog
