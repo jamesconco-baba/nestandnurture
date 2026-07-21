@@ -62,6 +62,7 @@ export async function PUT(request) {
     name: body.name?.trim() || products[idx].name,
     category: body.category || products[idx].category,
     price: body.price !== undefined ? Math.max(0, Number(body.price) || 0) : products[idx].price,
+    ...(body.imageUrl !== undefined ? { imageUrl: body.imageUrl || null } : {}),
   };
   const updated = [...products];
   updated[idx] = updatedProduct;

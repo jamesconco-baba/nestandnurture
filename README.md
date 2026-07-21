@@ -15,8 +15,8 @@ gold `#C5A059`, charcoal `#2C2C2C`, cream `#FAF6EF`, Playfair Display headings).
 - **Cart** with persistence (localStorage) across all three purchase paths.
 - **Payment** via **Paystack** (Card, Bank Transfer, USSD) — inline popup on checkout, verified
   server-side via a Vercel serverless function so a browser can't fake a successful payment.
-- **Admin dashboard** (`/admin`) — password-protected visit analytics + full product CRUD, backed
-  by Redis (see section 3 below).
+- **Admin dashboard** (`/admin`) — password-protected visit analytics + full product CRUD
+  (including per-item photo uploads), backed by Redis + Vercel Blob (see section 3 below).
 
 ## 1. Run it locally
 
@@ -71,6 +71,20 @@ in December 2024 in favor of this):
 (read-only) and the admin overview shows a "not connected yet" notice instead of numbers. Nothing
 crashes; it just can't save changes yet.
 
+### Product photos
+
+From `/admin/products`, click **Upload** (or **Replace**) next to any item to attach a real
+photo — it's stored in **Vercel Blob** and shows up immediately on the Unit Shop and
+Build-a-Gift pages, replacing the generic placeholder icon. Images are capped at 4MB and must be
+an image file type; there's a **Remove** link to drop a photo back to the placeholder.
+
+This needs its own storage connection, separate from the Redis one above:
+
+1. Vercel project → **Storage** tab → **Create Database** → **Blob**.
+2. Connect it to this project — Vercel injects `BLOB_READ_WRITE_TOKEN` automatically.
+3. Redeploy. Until this is connected, the upload button shows a "not configured yet" message
+   instead of failing silently.
+
 ### Admin login
 
 Set these two environment variables (Vercel → Project → Settings → Environment Variables):
@@ -116,8 +130,8 @@ git push -u origin main
 3. Under **Project → Settings → Environment Variables**, add:
    - `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` / `PAYSTACK_SECRET_KEY` (use your **Live** keys)
    - `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET`
-4. Deploy. Then connect Redis (step 3 above) so the admin dashboard can persist changes, and
-   redeploy once more.
+4. Deploy. Then connect Redis and Blob storage (steps above) so the admin dashboard can persist
+   changes and photos, and redeploy once more.
 5. Every push to `main` will auto-redeploy after this.
 
 ## Notes on prices & catalog

@@ -7,6 +7,7 @@ import { formatNaira } from '../../../lib/format';
 import { BUILD_A_GIFT_MIN_BUDGET } from '../../../lib/scoops';
 import { useCart } from '../../../context/CartContext';
 import { useRouter } from 'next/navigation';
+import ProductImage from '../../../components/ProductImage';
 
 export default function BuildAGiftPage() {
   const { products } = useProducts();
@@ -93,9 +94,12 @@ export default function BuildAGiftPage() {
                   key={p.id}
                   className="rounded-xl border border-charcoal/10 bg-white p-4 flex items-center justify-between gap-3"
                 >
-                  <div>
-                    <p className="font-display text-base leading-snug">{p.name}</p>
-                    <p className="text-sm text-charcoal/50 font-body">{formatNaira(p.price)}</p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ProductImage src={p.imageUrl} alt={p.name} className="w-12 h-12 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-display text-base leading-snug truncate">{p.name}</p>
+                      <p className="text-sm text-charcoal/50 font-body">{formatNaira(p.price)}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button

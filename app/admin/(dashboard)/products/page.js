@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { CATEGORIES } from '../../../../lib/products';
 import { formatNaira } from '../../../../lib/format';
+import ProductImage from '../../../../components/ProductImage';
+
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState(null);
@@ -13,6 +16,7 @@ export default function AdminProductsPage() {
   const [draft, setDraft] = useState({});
   const [newItem, setNewItem] = useState({ name: '', category: CATEGORIES[0], price: '' });
   const [savingNew, setSavingNew] = useState(false);
+  const [uploadingId, setUploadingId] = useState(null);
 
   const load = () => {
     fetch('/api/admin/products')
@@ -92,12 +96,63 @@ export default function AdminProductsPage() {
     flash('Item added');
   };
 
+  const handleImageSelect = async (product, file) => {
+    if (!file) return;
+    setError('');
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('That image is too large — please use a file under 4MB.');
+      return;
+    }
+
+    setUploadingId(product.id);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('productId', product.id);
+
+    try {
+      const res = await fetch('/api/admin/products/image', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.message || 'Image upload failed');
+        return;
+      }
+      setProducts(data.products);
+      flash('Image updated');
+    } catch (err) {
+      setError('Image upload failed — check your connection and try again.');
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  const removeImage = async (product) => {
+    setError('');
+    const res = await fetch('/api/admin/products', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: product.id, imageUrl: null }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      setError(data.message || 'Could not remove image');
+      return;
+    }
+    setProducts(data.products);
+    flash('Image removed');
+  };
+
   return (
     <div>
       <header className="mb-8">
         <h1 className="font-display text-3xl mb-1">Products</h1>
         <p className="text-sm text-charcoal/50 font-body">
-          Add, edit, or remove items from the Unit Shop &amp; Build-a-Gift catalog.
+          Add, edit, or remove items — and give each one a real photo — from the Unit Shop &amp;
+          Build-a-Gift catalog.
         </p>
       </header>
 
@@ -173,6 +228,9 @@ export default function AdminProductsPage() {
           {savingNew ? 'Adding…' : 'Add item'}
         </button>
       </form>
+      <p className="text-xs text-charcoal/40 font-body mb-6 -mt-4">
+        New items start without a photo — add one from the table below once it's been added.
+      </p>
 
       {/* Catalog table */}
       {!products ? (
@@ -182,6 +240,7 @@ export default function AdminProductsPage() {
           <table className="w-full text-sm font-body">
             <thead className="bg-lavender-50 text-left text-xs uppercase tracking-wide text-gold-700">
               <tr>
+                <th className="px-5 py-3">Image</th>
                 <th className="px-5 py-3">Item</th>
                 <th className="px-5 py-3">Category</th>
                 <th className="px-5 py-3">Price</th>
@@ -191,8 +250,45 @@ export default function AdminProductsPage() {
             <tbody>
               {products.map((p) => {
                 const isEditing = editingId === p.id;
+                const isUploading = uploadingId === p.id;
+                const inputId = `image-input-${p.id}`;
                 return (
                   <tr key={p.id} className="border-t border-charcoal/5">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <ProductImage src={p.imageUrl} alt={p.name} className="w-14 h-14 shrink-0" />
+                        <div className="flex flex-col gap-1">
+                          <label
+                            htmlFor={inputId}
+                            className={`focus-ring text-xs text-lavender hover:underline cursor-pointer ${
+                              !kvConfigured || isUploading ? 'opacity-30 pointer-events-none' : ''
+                            }`}
+                          >
+                            {isUploading ? 'Uploading…' : p.imageUrl ? 'Replace' : 'Upload'}
+                          </label>
+                          <input
+                            id={inputId}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={!kvConfigured || isUploading}
+                            onChange={(e) => {
+                              handleImageSelect(p, e.target.files?.[0]);
+                              e.target.value = '';
+                            }}
+                          />
+                          {p.imageUrl && (
+                            <button
+                              onClick={() => removeImage(p)}
+                              disabled={!kvConfigured || isUploading}
+                              className="focus-ring text-xs text-charcoal/40 hover:text-lavender-600 hover:underline text-left disabled:opacity-30"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-5 py-3">
                       {isEditing ? (
                         <input

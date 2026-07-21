@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { formatNaira } from '../lib/format';
 import { useCart } from '../context/CartContext';
+import ProductImage from './ProductImage';
 
 export default function ProductCard({ product }) {
   const { addItem } = useCart();
@@ -24,6 +25,7 @@ export default function ProductCard({ product }) {
   return (
     <div className="rounded-xl border border-charcoal/10 bg-white p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
       <div>
+        <ProductImage src={product.imageUrl} alt={product.name} className="w-full h-36 mb-4" />
         <p className="text-[11px] uppercase tracking-wide text-gold-700 font-body mb-1">
           {product.category}
         </p>
