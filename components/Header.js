@@ -62,6 +62,18 @@ export default function Header() {
               Log in
             </Link>
           )}
+          {user && (
+            <Link
+              href="/orders"
+              className={`focus-ring hidden sm:inline-flex items-center rounded-full border px-4 py-2 text-sm font-body transition-colors ${
+                pathname === '/orders'
+                  ? 'border-lavender bg-lavender text-white'
+                  : 'border-charcoal/15 text-charcoal hover:border-lavender hover:text-lavender'
+              }`}
+            >
+              Orders
+            </Link>
+          )}
           <Link
             href="/cart"
             className="focus-ring relative flex items-center gap-2 rounded-full border border-lavender/40 px-4 py-2 text-sm font-body text-charcoal hover:bg-lavender hover:text-white transition-colors"
@@ -100,6 +112,15 @@ export default function Header() {
               </Link>
             ))}
             <div className="border-t border-gold-100 mt-2 pt-2">
+              {user && (
+                <Link
+                  href="/orders"
+                  onClick={() => setOpen(false)}
+                  className="focus-ring rounded py-2 text-charcoal font-body block"
+                >
+                  Orders
+                </Link>
+              )}
               {user ? (
                 <button
                   onClick={() => {

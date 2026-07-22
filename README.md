@@ -138,6 +138,20 @@ personalization survey answers, and the Paystack payment reference for cross-che
 Orders are created automatically by `/api/paystack/verify` right after a payment is confirmed —
 there's nothing to wire up manually.
 
+### Customer order tracking (`/orders`)
+
+Signed-in customers see their own order history at `/orders` (linked from the header, next to
+Cart, once logged in). It mirrors the admin pipeline but simplified to two tabs that map onto
+the four admin stages:
+
+- **Waiting to Ship** — covers `waiting_to_ship`, `shipped`, and `delivered` (the actual stage
+  still shows inside each order if you expand it).
+- **Completed** — orders the admin has marked `completed` in `/admin/orders`.
+
+The moment you move an order to **Completed** in the admin dashboard, it moves to the customer's
+**Completed** tab too — same underlying order record, no separate sync step. Customers only ever
+see their own orders (the API route checks their session and filters by their account).
+
 ### Admin login
 
 Set these two environment variables (Vercel → Project → Settings → Environment Variables):
