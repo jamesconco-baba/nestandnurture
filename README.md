@@ -15,8 +15,11 @@ gold `#C5A059`, charcoal `#2C2C2C`, cream `#FAF6EF`, Playfair Display headings).
 - **Cart** with persistence (localStorage) across all three purchase paths.
 - **Payment** via **Paystack** (Card, Bank Transfer, USSD) — inline popup on checkout, verified
   server-side via a Vercel serverless function so a browser can't fake a successful payment.
-- **Admin dashboard** (`/admin`) — password-protected visit analytics + full product CRUD
-  (including per-item photo uploads), backed by Redis + Vercel Blob (see section 3 below).
+- **Customer accounts** (`/signup`, `/login`) — collects full name + email, required before
+  checkout so every order and cart can be attached to a person.
+- **Admin dashboard** (`/admin`) — password-protected visit analytics, full product CRUD
+  (including per-item photo uploads), and order management (see sections below), backed by
+  Redis + Vercel Blob.
 
 ## 1. Run it locally
 
@@ -87,6 +90,45 @@ This needs its own storage connection, separate from the Redis one above:
 2. Connect it to this project — Vercel injects `BLOB_READ_WRITE_TOKEN` automatically.
 3. Redeploy. Until this is connected, the upload button shows a "not configured yet" message
    instead of failing silently.
+
+### Customer accounts (sign up / login)
+
+Every order needs to be attached to a real person, so checkout now requires being signed in:
+
+- `/signup` — collects **full name, email, and password**, creates the account, and logs the
+  person straight in.
+- `/login` — logs an existing customer in.
+- The header shows **Log in** when signed out, or **Hi, [First name] · Log out** when signed in.
+- If someone with items in their cart heads to `/checkout` while signed out, they see a prompt
+  to log in or create an account (with a `redirect` back to checkout) instead of a broken form —
+  their cart is untouched (it's saved in the browser regardless of login state) and waiting for
+  them once they're signed in.
+
+Passwords are hashed with Node's built-in `crypto.scrypt` (salted, no plaintext ever stored) —
+no extra dependency needed. Sessions are a random token stored in Redis with a 30-day expiry, set
+as an httpOnly cookie (`nn_user_session`), separate from the admin session cookie.
+
+This needs the same Redis connection as the rest of the admin dashboard — no separate setup.
+
+### Order management (`/admin/orders`)
+
+A tabbed dashboard covering the full lifecycle of a paid order:
+
+- **Waiting to Ship** — every order lands here immediately after a successful, verified payment.
+- **Shipped**, **Delivered**, **Completed** — move an order through these from its detail view
+  (click a row to expand it, then use the **Status** dropdown). Nothing moves automatically;
+  it's a manual step so you're only marking things once you've actually done them.
+- **Waiting in Carts** — a separate tab (not a shipping stage) showing what signed-in customers
+  currently have sitting in their cart but haven't checked out yet — useful for reminders or
+  understanding what's not converting. Only tracked for signed-in customers; anonymous browsing
+  isn't recorded here.
+
+Each order's expanded view shows the recipient's delivery details, the account holder who placed
+it (which may differ from the recipient — this is a gifting site), the itemized cart, the
+personalization survey answers, and the Paystack payment reference for cross-checking.
+
+Orders are created automatically by `/api/paystack/verify` right after a payment is confirmed —
+there's nothing to wire up manually.
 
 ### Admin login
 

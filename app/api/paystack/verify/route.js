@@ -1,4 +1,13 @@
 import { NextResponse } from 'next/server';
+import { getSessionUserId, USER_COOKIE } from '../../../../lib/auth';
+import { getUserById } from '../../../../lib/userStore';
+import { createOrder } from '../../../../lib/orderStore';
+import { deleteUserCart } from '../../../../lib/cartStore';
+import { kvConfigured } from '../../../../lib/kv';
+
+function getCustomField(customFields, name) {
+  return customFields?.find((f) => f.variable_name === name)?.value || '';
+}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -35,9 +44,42 @@ export async function GET(request) {
 
     const successful = data.data?.status === 'success';
 
-    // TODO: once verified, persist the order (with data.data.metadata containing the
-    // personalization survey + cart contents) to a database or send a notification —
-    // e.g. Supabase, Airtable, or an email via Resend/SendGrid.
+    if (successful && kvConfigured) {
+      try {
+        const token = request.cookies.get(USER_COOKIE)?.value;
+        const userId = await getSessionUserId(token);
+        const user = userId ? await getUserById(userId) : null;
+
+        const metadata = data.data?.metadata || {};
+        const customFields = metadata.custom_fields || [];
+
+        await createOrder({
+          paymentReference: data.data?.reference,
+          amount: (data.data?.amount || 0) / 100,
+          userId: user?.id || null,
+          accountName: user?.name || null,
+          accountEmail: user?.email || data.data?.customer?.email || null,
+          recipient: {
+            name: getCustomField(customFields, 'recipient_name'),
+            phone: getCustomField(customFields, 'recipient_phone'),
+            email: data.data?.customer?.email || '',
+            address: getCustomField(customFields, 'address'),
+          },
+          personalization: {
+            gender: getCustomField(customFields, 'gender'),
+            greetingText: getCustomField(customFields, 'greeting'),
+            assemblyNotes: getCustomField(customFields, 'assembly_notes'),
+          },
+          items: metadata.cart || [],
+        });
+
+        if (userId) await deleteUserCart(userId);
+      } catch (err) {
+        // Payment already succeeded — don't fail the response over a logging issue, but
+        // make sure it's visible in server logs so the order can be added manually if needed.
+        console.error('[paystack/verify] failed to persist order:', err);
+      }
+    }
 
     return NextResponse.json({
       status: successful,

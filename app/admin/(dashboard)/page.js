@@ -66,12 +66,20 @@ export default function AdminOverviewPage() {
         </div>
       </div>
 
-      <Link
-        href="/admin/products"
-        className="focus-ring inline-block rounded-full bg-lavender text-white px-6 py-3 font-body text-sm uppercase tracking-wide hover:bg-lavender-600 transition-colors"
-      >
-        Manage products →
-      </Link>
+      <div className="flex flex-wrap gap-4">
+        <Link
+          href="/admin/orders"
+          className="focus-ring inline-block rounded-full bg-lavender text-white px-6 py-3 font-body text-sm uppercase tracking-wide hover:bg-lavender-600 transition-colors"
+        >
+          Manage orders →
+        </Link>
+        <Link
+          href="/admin/products"
+          className="focus-ring inline-block rounded-full border border-charcoal/20 px-6 py-3 font-body text-sm uppercase tracking-wide hover:border-lavender hover:text-lavender transition-colors"
+        >
+          Manage products →
+        </Link>
+      </div>
     </div>
   );
 }

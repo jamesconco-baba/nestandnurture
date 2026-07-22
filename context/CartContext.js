@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
 const STORAGE_KEY = 'nn_cart_v1';
@@ -13,6 +14,7 @@ const emptyPersonalization = {
 };
 
 export function CartProvider({ children }) {
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [personalization, setPersonalization] = useState(emptyPersonalization);
   const [hydrated, setHydrated] = useState(false);
@@ -81,6 +83,22 @@ export function CartProvider({ children }) {
   );
 
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items]);
+
+  // Mirror the cart to the server for logged-in customers, debounced, so the admin
+  // "Waiting in Carts" tab can see what people have added without checking out yet.
+  useEffect(() => {
+    if (!hydrated || !user) return;
+    const timeout = setTimeout(() => {
+      fetch('/api/cart/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, personalization, subtotal }),
+      }).catch(() => {
+        // Best-effort — a failed sync shouldn't interrupt shopping.
+      });
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [items, personalization, subtotal, user, hydrated]);
 
   const value = {
     items,

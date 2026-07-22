@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import NestMark from './NestMark';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const NAV = [
   { href: '/shop', label: 'Unit Shop' },
@@ -15,6 +16,7 @@ const NAV = [
 export default function Header() {
   const [open, setOpen] = useState(false);
   const { itemCount } = useCart();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
 
   return (
@@ -41,7 +43,25 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {user ? (
+            <div className="hidden sm:flex items-center gap-3 font-body text-sm">
+              <span className="text-charcoal/60">Hi, {user.name.split(' ')[0]}</span>
+              <button
+                onClick={logout}
+                className="focus-ring text-charcoal/50 hover:text-lavender underline-offset-2 hover:underline"
+              >
+                Log out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden sm:inline focus-ring text-sm font-body text-charcoal/70 hover:text-lavender"
+            >
+              Log in
+            </Link>
+          )}
           <Link
             href="/cart"
             className="focus-ring relative flex items-center gap-2 rounded-full border border-lavender/40 px-4 py-2 text-sm font-body text-charcoal hover:bg-lavender hover:text-white transition-colors"
@@ -79,6 +99,36 @@ export default function Header() {
                 {n.label}
               </Link>
             ))}
+            <div className="border-t border-gold-100 mt-2 pt-2">
+              {user ? (
+                <button
+                  onClick={() => {
+                    logout();
+                    setOpen(false);
+                  }}
+                  className="focus-ring rounded py-2 text-charcoal font-body text-left w-full"
+                >
+                  Log out ({user.name.split(' ')[0]})
+                </button>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="focus-ring rounded py-2 text-charcoal font-body block"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    onClick={() => setOpen(false)}
+                    className="focus-ring rounded py-2 text-charcoal font-body block"
+                  >
+                    Create account
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </nav>
       )}

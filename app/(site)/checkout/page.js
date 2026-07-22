@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '../../../context/CartContext';
+import { useAuth } from '../../../context/AuthContext';
 import PersonalizationForm from '../../../components/PersonalizationForm';
 import { formatNaira, generateReference } from '../../../lib/format';
 import { usePaystackScript } from '../../../lib/usePaystackScript';
@@ -12,6 +13,7 @@ const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
 export default function CheckoutPage() {
   const { items, subtotal, personalization, updatePersonalization, clearCart, hydrated } = useCart();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const paystackReady = usePaystackScript();
 
@@ -23,6 +25,17 @@ export default function CheckoutPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Prefill the recipient fields from the account once we know who's logged in — still
+  // editable, since the gift recipient may be someone other than the account holder.
+  useEffect(() => {
+    if (!user) return;
+    setShipping((s) => ({
+      ...s,
+      name: s.name || user.name,
+      email: s.email || user.email,
+    }));
+  }, [user]);
 
   const personalizationComplete =
     personalization.gender &&
@@ -37,6 +50,8 @@ export default function CheckoutPage() {
   const orderMetadata = useMemo(
     () => ({
       custom_fields: [
+        { display_name: 'Recipient Name', variable_name: 'recipient_name', value: shipping.name },
+        { display_name: 'Recipient Phone', variable_name: 'recipient_phone', value: shipping.phone },
         { display_name: 'Gender Theme', variable_name: 'gender', value: personalization.gender },
         { display_name: 'Greeting Message', variable_name: 'greeting', value: personalization.greetingText },
         {
@@ -52,7 +67,7 @@ export default function CheckoutPage() {
       ],
       cart: items.map((i) => ({ name: i.name, qty: i.qty, price: i.price })),
     }),
-    [items, personalization, shipping.address]
+    [items, personalization, shipping.address, shipping.name, shipping.phone]
   );
 
   const handlePay = () => {
@@ -113,6 +128,32 @@ export default function CheckoutPage() {
         >
           Browse the shop
         </Link>
+      </div>
+    );
+  }
+
+  if (!authLoading && !user) {
+    return (
+      <div className="max-w-md mx-auto px-5 sm:px-8 py-24 text-center">
+        <h1 className="font-display text-3xl mb-4">Sign in to check out</h1>
+        <p className="text-charcoal/60 font-body mb-8">
+          We ask for a quick account so your order — and anything else in your cart — stays
+          attached to you. Your items are saved and waiting.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href="/login?redirect=/checkout"
+            className="focus-ring rounded-full border border-charcoal/20 px-7 py-3 font-body text-sm uppercase tracking-wide hover:border-lavender hover:text-lavender transition-colors"
+          >
+            Log in
+          </Link>
+          <Link
+            href="/signup?redirect=/checkout"
+            className="focus-ring rounded-full bg-lavender text-white px-7 py-3 font-body text-sm uppercase tracking-wide hover:bg-lavender-600 transition-colors"
+          >
+            Create account
+          </Link>
+        </div>
       </div>
     );
   }

@@ -6,6 +6,7 @@ import NestMark from '../NestMark';
 
 const LINKS = [
   { href: '/admin', label: 'Overview' },
+  { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/products', label: 'Products' },
 ];
 
