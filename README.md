@@ -15,8 +15,9 @@ gold `#C5A059`, charcoal `#2C2C2C`, cream `#FAF6EF`, Playfair Display headings).
 - **Cart** with persistence (localStorage) across all three purchase paths.
 - **Payment** via **Paystack** (Card, Bank Transfer, USSD) — inline popup on checkout, verified
   server-side via a Vercel serverless function so a browser can't fake a successful payment.
-- **Customer accounts** (`/signup`, `/login`) — collects full name + email, required before
-  checkout so every order and cart can be attached to a person.
+- **Customer accounts** (`/signup`, `/login`) — email/password or one-click **Google sign-in**,
+  required before checkout so every order and cart can be attached to a person.
+- **Customer order tracking** (`/orders`) — signed-in customers see their own order history.
 - **Admin dashboard** (`/admin`) — password-protected visit analytics, full product CRUD
   (including per-item photo uploads), and order management (see sections below), backed by
   Redis + Vercel Blob.
@@ -118,6 +119,44 @@ as an httpOnly cookie (`nn_user_session`), separate from the admin session cooki
 
 This needs the same Redis connection as the rest of the admin dashboard — no separate setup.
 
+### Google sign-in ("Continue with Google")
+
+Both `/login` and `/signup` show a **Continue with Google** button above the email/password
+form — one click, no password to create or remember. It's implemented as a plain OAuth 2.0 flow
+against Google's own endpoints (no SDK, no extra npm package), so it slots into the same
+account/session system as email/password login:
+
+- If the Google account's email matches an existing password-based account, it's linked to that
+  same account (so someone can use either method going forward).
+- Otherwise, a new account is created automatically — no separate "Google users" table, just the
+  same customer record with `authProvider: 'google'` and no password set.
+
+**Setup (5 minutes):**
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → create or select a
+   project → **APIs & Services** → **Credentials**.
+2. **Create Credentials** → **OAuth client ID**. If prompted, configure the **OAuth consent
+   screen** first (External user type is fine for a public storefront; you only need an app name
+   and support email).
+3. Application type: **Web application**.
+4. Under **Authorized redirect URIs**, add:
+   - `https://your-production-domain.com/api/auth/google/callback` (your real domain)
+   - `http://localhost:3000/api/auth/google/callback` (for local development)
+
+   These must match **exactly** — Google rejects anything that doesn't, including a trailing
+   slash mismatch.
+5. Copy the generated **Client ID** and **Client Secret** into `GOOGLE_CLIENT_ID` and
+   `GOOGLE_CLIENT_SECRET` in Vercel's environment variables, then redeploy.
+
+**Until these are set**, the Google button still shows (it's harmless to leave visible), but
+clicking it redirects straight to `/login` with a friendly "Google sign-in isn't set up yet"
+message instead of erroring out.
+
+**One quirk worth knowing:** Vercel preview deployments get a random URL per deployment
+(`your-app-git-branch-yourteam.vercel.app`), and Google requires an exact redirect URI match — so
+Google sign-in will only work on domains you've explicitly added above. Email/password sign-in is
+unaffected and works on any domain, including previews.
+
 ### Order management (`/admin/orders`)
 
 A tabbed dashboard covering the full lifecycle of a paid order:
@@ -197,9 +236,14 @@ git push -u origin main
 3. Under **Project → Settings → Environment Variables**, add:
    - `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` / `PAYSTACK_SECRET_KEY` (use your **Live** keys)
    - `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET`
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (optional — skip if you don't want Google
+     sign-in yet; add later anytime)
 4. Deploy. Then connect Redis and Blob storage (steps above) so the admin dashboard can persist
    changes and photos, and redeploy once more.
-5. Every push to `main` will auto-redeploy after this.
+5. If you added Google credentials, go back to Google Cloud Console and add this deployment's
+   real domain to **Authorized redirect URIs** as `https://your-domain.com/api/auth/google/callback`
+   (see the Google sign-in section above) — it won't work until that exact URL is registered.
+6. Every push to `main` will auto-redeploy after this.
 
 ## Notes on prices & catalog
 
