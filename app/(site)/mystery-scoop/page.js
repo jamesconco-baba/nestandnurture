@@ -1,11 +1,13 @@
 'use client';
 
-import { MYSTERY_SCOOPS } from '../../../lib/scoops';
+import { useScoops } from '../../../lib/useScoops';
 import { formatNaira } from '../../../lib/format';
 import { useCart } from '../../../context/CartContext';
 import { useRouter } from 'next/navigation';
+import ProductImage from '../../../components/ProductImage';
 
 export default function MysteryScoopPage() {
+  const { scoops } = useScoops();
   const { addItem } = useCart();
   const router = useRouter();
 
@@ -36,7 +38,7 @@ export default function MysteryScoopPage() {
       </header>
 
       <div className="grid gap-6 sm:grid-cols-3">
-        {MYSTERY_SCOOPS.map((s) => (
+        {scoops.map((s) => (
           <div
             key={s.id}
             className={`rounded-2xl p-8 bg-white border flex flex-col ${
@@ -48,6 +50,7 @@ export default function MysteryScoopPage() {
                 Most Popular
               </span>
             )}
+            <ProductImage src={s.imageUrl} alt={s.name} className="w-full h-44 mb-5" />
             <h2 className="font-display text-2xl mb-1">{s.name}</h2>
             <p className="text-lavender font-body text-2xl font-semibold mb-4">
               {formatNaira(s.price)}

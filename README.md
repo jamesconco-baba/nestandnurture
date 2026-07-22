@@ -77,19 +77,27 @@ in December 2024 in favor of this):
 (read-only) and the admin overview shows a "not connected yet" notice instead of numbers. Nothing
 crashes; it just can't save changes yet.
 
-### Product photos
+### Product & Mystery Scoop photos
 
-From `/admin/products`, click **Upload** (or **Replace**) next to any item to attach a real
-photo — it's stored in **Vercel Blob** and shows up immediately on the Unit Shop and
-Build-a-Gift pages, replacing the generic placeholder icon. Images are capped at 4MB and must be
-an image file type; there's a **Remove** link to drop a photo back to the placeholder.
+From `/admin/products`, click **Upload photo** (or **Replace photo**) next to any item to attach
+a real photo — it's stored in **Vercel Blob** and shows up immediately on the Unit Shop and
+Build-a-Gift pages, replacing the generic placeholder icon. From `/admin/scoops`, do the same for
+each of the three Mystery Scoop tiers (Starter/Classic/Deluxe) — their photos show on the Mystery
+Scoop page and the homepage teaser, so customers can gauge the size of the package before buying.
+Images are capped at 4MB and must be an image file type; there's a **Remove** link to drop a
+photo back to the placeholder.
 
 This needs its own storage connection, separate from the Redis one above:
 
 1. Vercel project → **Storage** tab → **Create Database** → **Blob**.
 2. Connect it to this project — Vercel injects `BLOB_READ_WRITE_TOKEN` automatically.
-3. Redeploy. Until this is connected, the upload button shows a "not configured yet" message
-   instead of failing silently.
+3. Redeploy.
+
+**Until Blob is connected**, both admin pages show an upfront yellow notice explaining that photo
+uploads aren't set up yet, and the Upload buttons are disabled — rather than letting you click
+Upload and have nothing visibly happen. If you ever see uploads fail after Blob *is* connected,
+the error message returned now includes the underlying reason (e.g. a specific Blob API error),
+which is also logged server-side in your Vercel deployment's function logs for that request.
 
 ### Customer accounts (sign up / login)
 

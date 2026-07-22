@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import NestMark from '../../components/NestMark';
-import { MYSTERY_SCOOPS } from '../../lib/scoops';
-import { formatNaira } from '../../lib/format';
+import ScoopsTeaser from '../../components/ScoopsTeaser';
 
 export default function Home() {
   return (
@@ -88,27 +87,7 @@ export default function Home() {
               View all tiers →
             </Link>
           </div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {MYSTERY_SCOOPS.map((s) => (
-              <div
-                key={s.id}
-                className={`rounded-2xl p-7 bg-white border ${
-                  s.featured ? 'border-gold-400 shadow-lg shadow-gold-100' : 'border-lavender-100'
-                }`}
-              >
-                {s.featured && (
-                  <span className="inline-block mb-3 text-[11px] uppercase tracking-wide bg-gold-100 text-gold-700 rounded-full px-3 py-1">
-                    Most Popular
-                  </span>
-                )}
-                <h3 className="font-display text-2xl mb-1">{s.name}</h3>
-                <p className="text-lavender font-body font-semibold mb-3">
-                  {formatNaira(s.price)}
-                </p>
-                <p className="text-sm text-charcoal/60 font-body">{s.tagline}</p>
-              </div>
-            ))}
-          </div>
+          <ScoopsTeaser />
         </div>
       </section>
     </div>

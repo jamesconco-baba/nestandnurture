@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { isAuthorized } from '../../../../lib/adminAuth';
 import { getProducts, saveProducts } from '../../../../lib/productStore';
 import { kvConfigured } from '../../../../lib/kv';
+import { blobConfigured } from '../../../../lib/blob';
 
 function unauthorized() {
   return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
@@ -21,7 +22,7 @@ function notConfigured() {
 export async function GET(request) {
   if (!isAuthorized(request)) return unauthorized();
   const products = await getProducts();
-  return NextResponse.json({ products, kvConfigured });
+  return NextResponse.json({ products, kvConfigured, blobConfigured });
 }
 
 export async function POST(request) {

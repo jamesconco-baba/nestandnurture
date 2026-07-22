@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { isAuthorized } from '../../../../../lib/adminAuth';
-import { getProducts, saveProducts } from '../../../../../lib/productStore';
+import { getScoops, saveScoops } from '../../../../../lib/scoopStore';
 import { kvConfigured } from '../../../../../lib/kv';
 import { blobConfigured } from '../../../../../lib/blob';
 
-const MAX_BYTES = 4 * 1024 * 1024; // stay safely under Vercel's 4.5MB server-upload body limit
+const MAX_BYTES = 4 * 1024 * 1024;
 
 export async function POST(request) {
   if (!isAuthorized(request)) {
@@ -23,7 +23,7 @@ export async function POST(request) {
   }
   if (!kvConfigured) {
     return NextResponse.json(
-      { ok: false, message: 'Product storage (Redis) is not configured — connect that first.' },
+      { ok: false, message: 'Storage (Redis) is not configured — connect that first.' },
       { status: 503 }
     );
   }
@@ -36,13 +36,13 @@ export async function POST(request) {
   }
 
   const file = formData.get('file');
-  const productId = formData.get('productId');
+  const scoopId = formData.get('scoopId');
 
   if (!file || typeof file === 'string') {
     return NextResponse.json({ ok: false, message: 'No file provided' }, { status: 400 });
   }
-  if (!productId) {
-    return NextResponse.json({ ok: false, message: 'Missing productId' }, { status: 400 });
+  if (!scoopId) {
+    return NextResponse.json({ ok: false, message: 'Missing scoopId' }, { status: 400 });
   }
   if (!file.type || !file.type.startsWith('image/')) {
     return NextResponse.json({ ok: false, message: 'Only image files are allowed' }, { status: 400 });
@@ -54,32 +54,32 @@ export async function POST(request) {
     );
   }
 
-  const products = await getProducts();
-  const idx = products.findIndex((p) => p.id === productId);
+  const scoops = await getScoops();
+  const idx = scoops.findIndex((s) => s.id === scoopId);
   if (idx === -1) {
-    return NextResponse.json({ ok: false, message: 'Item not found' }, { status: 404 });
+    return NextResponse.json({ ok: false, message: 'Tier not found' }, { status: 404 });
   }
 
   const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
 
   let blob;
   try {
-    blob = await put(`products/${productId}-${Date.now()}.${ext}`, file, {
+    blob = await put(`scoops/${scoopId}-${Date.now()}.${ext}`, file, {
       access: 'public',
       addRandomSuffix: true,
       contentType: file.type,
     });
   } catch (err) {
-    console.error('[products/image] Blob upload failed:', err);
+    console.error('[scoops/image] Blob upload failed:', err);
     return NextResponse.json(
       { ok: false, message: `Upload to storage failed: ${err.message || 'unknown error'}` },
       { status: 500 }
     );
   }
 
-  const updated = [...products];
+  const updated = [...scoops];
   updated[idx] = { ...updated[idx], imageUrl: blob.url };
-  await saveProducts(updated);
+  await saveScoops(updated);
 
-  return NextResponse.json({ ok: true, product: updated[idx], products: updated });
+  return NextResponse.json({ ok: true, scoop: updated[idx], scoops: updated });
 }

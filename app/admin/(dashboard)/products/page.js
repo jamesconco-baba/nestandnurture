@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { CATEGORIES } from '../../../../lib/products';
 import { formatNaira } from '../../../../lib/format';
 import ProductImage from '../../../../components/ProductImage';
+import ImageUploadControl from '../../../../components/admin/ImageUploadControl';
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState(null);
   const [kvConfigured, setKvConfigured] = useState(true);
+  const [blobConfigured, setBlobConfigured] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -24,6 +26,7 @@ export default function AdminProductsPage() {
       .then((d) => {
         setProducts(d.products || []);
         setKvConfigured(Boolean(d.kvConfigured));
+        setBlobConfigured(Boolean(d.blobConfigured));
       })
       .catch(() => setError('Could not load products.'));
   };
@@ -97,7 +100,6 @@ export default function AdminProductsPage() {
   };
 
   const handleImageSelect = async (product, file) => {
-    if (!file) return;
     setError('');
 
     if (!file.type.startsWith('image/')) {
@@ -116,14 +118,21 @@ export default function AdminProductsPage() {
 
     try {
       const res = await fetch('/api/admin/products/image', { method: 'POST', body: formData });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        setError(`Upload failed — server returned an unexpected response (status ${res.status}).`);
+        return;
+      }
       if (!res.ok || !data.ok) {
-        setError(data.message || 'Image upload failed');
+        setError(data.message || `Image upload failed (status ${res.status})`);
         return;
       }
       setProducts(data.products);
       flash('Image updated');
     } catch (err) {
+      console.error('[admin/products] image upload error:', err);
       setError('Image upload failed — check your connection and try again.');
     } finally {
       setUploadingId(null);
@@ -162,6 +171,18 @@ export default function AdminProductsPage() {
           <p>
             Connect a Redis database from the Vercel Marketplace (Storage tab → Upstash Redis)
             and redeploy. Until then this page shows the built-in catalog, read-only.
+          </p>
+        </div>
+      )}
+
+      {kvConfigured && !blobConfigured && (
+        <div className="mb-6 rounded-xl border border-gold-300 bg-gold-50 p-5 text-sm font-body text-charcoal/70">
+          <p className="font-semibold mb-1">Photo uploads aren&apos;t connected yet.</p>
+          <p>
+            Everything else on this page works, but uploading images needs its own storage:
+            Vercel project → <strong>Storage</strong> tab → <strong>Create Database</strong> →{' '}
+            <strong>Blob</strong> → connect it to this project, then redeploy. See the README for
+            details.
           </p>
         </div>
       )}
@@ -251,42 +272,25 @@ export default function AdminProductsPage() {
               {products.map((p) => {
                 const isEditing = editingId === p.id;
                 const isUploading = uploadingId === p.id;
-                const inputId = `image-input-${p.id}`;
                 return (
                   <tr key={p.id} className="border-t border-charcoal/5">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <ProductImage src={p.imageUrl} alt={p.name} className="w-14 h-14 shrink-0" />
-                        <div className="flex flex-col gap-1">
-                          <label
-                            htmlFor={inputId}
-                            className={`focus-ring text-xs text-lavender hover:underline cursor-pointer ${
-                              !kvConfigured || isUploading ? 'opacity-30 pointer-events-none' : ''
-                            }`}
-                          >
-                            {isUploading ? 'Uploading…' : p.imageUrl ? 'Replace' : 'Upload'}
-                          </label>
-                          <input
-                            id={inputId}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            disabled={!kvConfigured || isUploading}
-                            onChange={(e) => {
-                              handleImageSelect(p, e.target.files?.[0]);
-                              e.target.value = '';
-                            }}
-                          />
-                          {p.imageUrl && (
-                            <button
-                              onClick={() => removeImage(p)}
-                              disabled={!kvConfigured || isUploading}
-                              className="focus-ring text-xs text-charcoal/40 hover:text-lavender-600 hover:underline text-left disabled:opacity-30"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
+                        <ImageUploadControl
+                          imageUrl={p.imageUrl}
+                          disabled={!kvConfigured || !blobConfigured}
+                          disabledReason={
+                            !kvConfigured
+                              ? 'Connect Redis storage first'
+                              : !blobConfigured
+                              ? 'Connect Vercel Blob storage first'
+                              : undefined
+                          }
+                          uploading={isUploading}
+                          onSelectFile={(file) => handleImageSelect(p, file)}
+                          onRemove={() => removeImage(p)}
+                        />
                       </div>
                     </td>
                     <td className="px-5 py-3">

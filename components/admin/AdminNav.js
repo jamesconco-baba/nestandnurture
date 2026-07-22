@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/products', label: 'Products' },
+  { href: '/admin/scoops', label: 'Mystery Scoops' },
 ];
 
 export default function AdminNav() {
