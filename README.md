@@ -19,8 +19,8 @@ gold `#C5A059`, charcoal `#2C2C2C`, cream `#FAF6EF`, Playfair Display headings).
   required before checkout so every order and cart can be attached to a person.
 - **Customer order tracking** (`/orders`) — signed-in customers see their own order history.
 - **Admin dashboard** (`/admin`) — password-protected visit analytics, full product CRUD
-  (including per-item photo uploads), and order management (see sections below), backed by
-  Redis + Vercel Blob.
+  (including per-item photo uploads), order management, a customers list, and discount code
+  management (see sections below), backed by Redis + Vercel Blob.
 
 ## 1. Run it locally
 
@@ -156,6 +156,35 @@ message instead of erroring out.
 (`your-app-git-branch-yourteam.vercel.app`), and Google requires an exact redirect URI match — so
 Google sign-in will only work on domains you've explicitly added above. Email/password sign-in is
 unaffected and works on any domain, including previews.
+
+### Customers (`/admin/users`)
+
+Every registered account — password or Google — shows up here: name, email, how they signed up,
+when they joined, how many orders they've placed, and total lifetime spend. Read-only for now
+(no editing or deleting accounts from here yet).
+
+### Discount codes (`/admin/discounts`)
+
+Create codes for whatever purpose you like — a blanket 10% off, a one-time new-customer
+incentive, a fixed ₦2,000-off promo — from one form:
+
+- **Type**: percentage off, or a fixed Naira amount off.
+- **Purpose / label**: a free-text note for your own reference (e.g. "New User Discount"),
+  shown in the admin list — customers don't see it.
+- **Max uses** (optional): caps total redemptions across all customers; leave blank for
+  unlimited.
+- **Minimum order** (optional): the code won't apply below this subtotal.
+- **Expires** (optional): the code stops working after this date.
+
+Use the **Generate** button next to the code field for a random 8-character code, or type your
+own (it's automatically uppercased). Toggle a code **Active**/**Inactive** any time without
+deleting it — inactive codes stay in the list with their usage history intact.
+
+Customers enter a code in a field on the checkout page; it's checked against all of the above in
+real time, and the discount is subtracted before the amount is sent to Paystack — so the discount
+is baked into the actual charge, not something applied after the fact. Usage count only increments
+once a payment is confirmed (not just validated), so someone checking whether a code works
+doesn't burn a redemption.
 
 ### Order management (`/admin/orders`)
 

@@ -26,6 +26,11 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const [discountInput, setDiscountInput] = useState('');
+  const [discount, setDiscount] = useState(null); // { code, discountAmount }
+  const [discountError, setDiscountError] = useState('');
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
+
   // Prefill the recipient fields from the account once we know who's logged in — still
   // editable, since the gift recipient may be someone other than the account holder.
   useEffect(() => {
@@ -47,6 +52,38 @@ export default function CheckoutPage() {
 
   const canPay = personalizationComplete && shippingComplete && items.length > 0 && !submitting;
 
+  const total = Math.max(0, subtotal - (discount?.discountAmount || 0));
+
+  const applyDiscount = async () => {
+    if (!discountInput.trim()) return;
+    setDiscountError('');
+    setApplyingDiscount(true);
+    try {
+      const res = await fetch('/api/discounts/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: discountInput.trim(), subtotal }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setDiscountError(data.message || 'That code isn\u2019t valid.');
+        setDiscount(null);
+        return;
+      }
+      setDiscount({ code: data.discount.code, discountAmount: data.discountAmount });
+    } catch (err) {
+      setDiscountError('Could not check that code — try again.');
+    } finally {
+      setApplyingDiscount(false);
+    }
+  };
+
+  const removeDiscount = () => {
+    setDiscount(null);
+    setDiscountInput('');
+    setDiscountError('');
+  };
+
   const orderMetadata = useMemo(
     () => ({
       custom_fields: [
@@ -64,10 +101,20 @@ export default function CheckoutPage() {
           variable_name: 'address',
           value: shipping.address,
         },
+        {
+          display_name: 'Discount Code',
+          variable_name: 'discount_code',
+          value: discount?.code || '',
+        },
+        {
+          display_name: 'Discount Amount',
+          variable_name: 'discount_amount',
+          value: String(discount?.discountAmount || 0),
+        },
       ],
       cart: items.map((i) => ({ name: i.name, qty: i.qty, price: i.price })),
     }),
-    [items, personalization, shipping.address, shipping.name, shipping.phone]
+    [items, personalization, shipping.address, shipping.name, shipping.phone, discount]
   );
 
   const handlePay = () => {
@@ -90,7 +137,7 @@ export default function CheckoutPage() {
     const handler = window.PaystackPop.setup({
       key: PUBLIC_KEY,
       email: shipping.email,
-      amount: Math.round(subtotal * 100), // kobo
+      amount: Math.round(total * 100), // kobo, after any discount
       currency: 'NGN',
       ref: reference,
       channels: ['card', 'bank', 'ussd', 'bank_transfer'],
@@ -218,9 +265,58 @@ export default function CheckoutPage() {
               </li>
             ))}
           </ul>
-          <div className="border-t border-charcoal/10 pt-4 flex justify-between font-body mb-6">
-            <span className="text-charcoal/60">Total</span>
-            <span className="font-display text-xl">{formatNaira(subtotal)}</span>
+
+          {/* Discount code */}
+          <div className="border-t border-charcoal/10 pt-4 mb-4">
+            {discount ? (
+              <div className="flex items-center justify-between text-sm font-body bg-gold-50 border border-gold-200 rounded-lg px-3 py-2">
+                <span className="text-gold-700">
+                  Code <strong>{discount.code}</strong> applied
+                </span>
+                <button
+                  onClick={removeDiscount}
+                  className="focus-ring text-charcoal/40 hover:text-lavender-600 text-xs underline-offset-2 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={discountInput}
+                  onChange={(e) => setDiscountInput(e.target.value)}
+                  placeholder="Discount code"
+                  className="focus-ring flex-1 min-w-0 rounded-lg border border-charcoal/15 px-3 py-2 text-sm font-body uppercase"
+                />
+                <button
+                  onClick={applyDiscount}
+                  disabled={applyingDiscount || !discountInput.trim()}
+                  className="focus-ring rounded-lg border border-lavender text-lavender text-xs uppercase tracking-wide px-4 disabled:opacity-40 hover:bg-lavender hover:text-white transition-colors"
+                >
+                  {applyingDiscount ? '…' : 'Apply'}
+                </button>
+              </div>
+            )}
+            {discountError && (
+              <p className="text-xs text-lavender-600 font-body mt-2">{discountError}</p>
+            )}
+          </div>
+
+          <div className="space-y-1 mb-6 font-body">
+            <div className="flex justify-between text-sm text-charcoal/60">
+              <span>Subtotal</span>
+              <span>{formatNaira(subtotal)}</span>
+            </div>
+            {discount && (
+              <div className="flex justify-between text-sm text-gold-700">
+                <span>Discount</span>
+                <span>-{formatNaira(discount.discountAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 border-t border-charcoal/10 mt-2">
+              <span className="text-charcoal/60">Total</span>
+              <span className="font-display text-xl">{formatNaira(total)}</span>
+            </div>
           </div>
 
           {error && (
@@ -234,7 +330,7 @@ export default function CheckoutPage() {
             disabled={!canPay}
             className="focus-ring w-full rounded-full bg-lavender text-white py-3 font-body text-sm uppercase tracking-wide disabled:opacity-40 hover:bg-lavender-600 transition-colors mb-3"
           >
-            {submitting ? 'Processing…' : `Pay ${formatNaira(subtotal)}`}
+            {submitting ? 'Processing…' : `Pay ${formatNaira(total)}`}
           </button>
           <p className="text-[11px] text-charcoal/40 font-body text-center">
             Secure payment via Paystack — Card, Bank Transfer &amp; USSD accepted.

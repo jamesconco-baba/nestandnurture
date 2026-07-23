@@ -3,6 +3,7 @@ import { getSessionUserId, USER_COOKIE } from '../../../../lib/auth';
 import { getUserById } from '../../../../lib/userStore';
 import { createOrder } from '../../../../lib/orderStore';
 import { deleteUserCart } from '../../../../lib/cartStore';
+import { incrementDiscountUsage } from '../../../../lib/discountStore';
 import { kvConfigured } from '../../../../lib/kv';
 
 function getCustomField(customFields, name) {
@@ -52,6 +53,7 @@ export async function GET(request) {
 
         const metadata = data.data?.metadata || {};
         const customFields = metadata.custom_fields || [];
+        const discountCode = getCustomField(customFields, 'discount_code');
 
         await createOrder({
           paymentReference: data.data?.reference,
@@ -71,8 +73,15 @@ export async function GET(request) {
             assemblyNotes: getCustomField(customFields, 'assembly_notes'),
           },
           items: metadata.cart || [],
+          discount: discountCode
+            ? {
+                code: discountCode,
+                amount: Number(getCustomField(customFields, 'discount_amount')) || 0,
+              }
+            : null,
         });
 
+        if (discountCode) await incrementDiscountUsage(discountCode);
         if (userId) await deleteUserCart(userId);
       } catch (err) {
         // Payment already succeeded — don't fail the response over a logging issue, but

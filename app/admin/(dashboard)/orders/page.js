@@ -236,6 +236,15 @@ function OrdersList({ orders, loaded, expandedId, setExpandedId, updatingId, onC
                   </div>
                 )}
 
+                {o.discount?.code && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gold-700 mb-1">Discount applied</p>
+                    <p className="text-charcoal/70">
+                      {o.discount.code} &middot; -{formatNaira(o.discount.amount || 0)}
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 pt-2 border-t border-charcoal/5">
                   <label className="text-xs uppercase tracking-wide text-gold-700">Status</label>
                   <select
