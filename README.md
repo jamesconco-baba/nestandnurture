@@ -171,8 +171,14 @@ incentive, a fixed ₦2,000-off promo — from one form:
 - **Type**: percentage off, or a fixed Naira amount off.
 - **Purpose / label**: a free-text note for your own reference (e.g. "New User Discount"),
   shown in the admin list — customers don't see it.
-- **Max uses** (optional): caps total redemptions across all customers; leave blank for
-  unlimited.
+- **Max uses** (optional): a **global** cap on total redemptions across every customer combined
+  (e.g. 50 means the first 50 orders using it, from any mix of people, then it stops). Leave
+  blank for unlimited.
+- **Limit to one use per customer** (checkbox): on top of any max uses above, blocks the *same*
+  signed-in customer from using this exact code more than once — this is the setting you want for
+  a "New User Discount" so it can't be reused order after order by one person, while still working
+  for every different customer up to the max-uses cap. Checked against that customer's own past
+  orders, so it only applies to signed-in customers (which checkout already requires).
 - **Minimum order** (optional): the code won't apply below this subtotal.
 - **Expires** (optional): the code stops working after this date.
 

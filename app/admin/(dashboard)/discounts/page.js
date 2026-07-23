@@ -11,6 +11,7 @@ const emptyForm = {
   maxUses: '',
   minOrderAmount: '',
   expiresAt: '',
+  oncePerCustomer: false,
 };
 
 function randomCode() {
@@ -233,6 +234,19 @@ export default function AdminDiscountsPage() {
           </label>
         </div>
 
+        <label className="flex items-center gap-2 mb-4 text-sm font-body text-charcoal/70 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.oncePerCustomer}
+            onChange={(e) => setForm((s) => ({ ...s, oncePerCustomer: e.target.checked }))}
+            className="accent-lavender w-4 h-4"
+          />
+          Limit to one use per customer
+          <span className="text-charcoal/40 text-xs">
+            (in addition to any max uses above, which is a total cap across everyone)
+          </span>
+        </label>
+
         <button
           type="submit"
           disabled={saving || !kvConfigured || !form.code.trim() || !form.value}
@@ -276,6 +290,9 @@ export default function AdminDiscountsPage() {
                   <td className="px-5 py-3 text-charcoal/60">{d.description || '—'}</td>
                   <td className="px-5 py-3 text-charcoal/60">
                     {d.usedCount}{d.maxUses ? ` / ${d.maxUses}` : ''}
+                    {d.oncePerCustomer && (
+                      <span className="block text-xs text-charcoal/40">1 per customer</span>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-charcoal/60">
                     {d.expiresAt ? new Date(d.expiresAt).toLocaleDateString() : '—'}
